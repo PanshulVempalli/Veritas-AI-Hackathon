@@ -1,0 +1,136 @@
+THE MAKING OF: COUNTRY RISK FORECASTING PROJECT
+================================================
+
+Repository: Veritas-AI-Hackathon
+Main script: country_risk.py
+Data: four yearly country-level CSV files
+
+
+1. THE IDEA
+
+The project asks a simple question: can a country's basic indicators, such as
+income, schooling, and health spending, help predict its child mortality in the
+following year? The aim was a small, transparent forecasting pipeline rather
+than a complex model, so the logic could be explained clearly in a short video.
+
+
+2. THE DATA
+
+The repository holds four CSV files in the Our World in Data layout, with the
+columns Entity, Code, Year, and one value column:
+
+  child-mortality.csv                          outcome (under-five mortality rate)
+  gdp-per-capita-worldbank.csv                 indicator
+  mean-years-of-schooling-long-run.csv         indicator
+  public-health-expenditure-share-gdp.csv      indicator
+
+An early version of the project was prototyped with synthetic files generated
+inside a sandbox, because the real files were not yet in hand. Those synthetic
+files were used only to confirm that the script ran end to end. Their numbers
+were invented, so they say nothing about real countries.
+
+The real data then replaced them. It covers 213 entities (countries plus
+regional and world aggregates) across years from 1751 to 2025.
+
+
+3. BUILDING THE SCRIPT
+
+The script was written in stages, each one doing one job:
+
+  a. Find the CSV files and identify the outcome (the file with "mort" in its
+     name) and the indicators (everything else).
+  b. Load each file, keep only individual countries (three-letter codes), and
+     reduce each one to country, year, and a single value.
+  c. Merge all files on country and year with an outer join.
+  d. Fill short gaps of up to two years within each country.
+  e. Create one-year lagged features, so each row holds last year's values.
+  f. Split the data by time: the last five years are the test set.
+  g. Train a linear regression and compare it with a naive baseline that
+     predicts this year equals last year.
+  h. Print the error of each approach and the top ten countries by predicted
+     outcome in the latest test year.
+
+
+4. PROBLEMS ENCOUNTERED AND HOW THEY WERE FIXED
+
+Running the script in GitHub Codespaces rather than Google Colab exposed a
+series of problems, each of which was fixed in turn.
+
+  Problem: The script looked for files in /content/, a Colab-only folder.
+  Fix:     It now looks in the same folder as the script itself.
+
+  Problem: The script crashed with "could not convert string to float: 'Europe'".
+           It had picked a text column (a continent name) as the value.
+  Fix:     The value column is now the last numeric column, not just the last
+           column.
+
+  Problem: Edits were saved to the file only partially, so the script kept
+           running the old code. Two runs printed identical output even after
+           changes.
+  Fix:     The whole script was rewritten from the terminal in one step, and
+           the file was checked with grep before rerunning.
+
+  Problem: Full file paths appeared in the output, and the MAE lines had only
+           two decimal places, which hid small differences.
+  Fix:     Only file names are printed, and the MAEs show four decimals.
+
+
+5. ISSUES WITH THE DATA
+
+The first real run produced 2023 predictions of around 3 for South Africa,
+which is far below the expected child mortality rate per 1,000 births. The
+file's only value column is "Under-five mortality rate (selected)", and its
+values range from 0.13 to 78.09. South Africa's values only make sense as
+percentages, while South Sudan's 1988 value of 78.09 is plausible as deaths
+per 1,000 births. The likely explanation is that the file mixes units or
+sources across countries and years. This has not been resolved. The source
+of the file should be checked on Our World in Data before the results are
+used.
+
+
+6. MODEL CHANGES
+
+The first version of the model predicted the outcome level directly. Because
+last year's value is already a strong predictor of this year's value, the
+model's errors were almost identical to the baseline's, both about 0.02.
+
+The model was then changed to predict the year-on-year change in the outcome
+and add it back to last year's value. This made the comparison with the
+baseline meaningful and also made the MAEs visible to four decimal places.
+
+
+7. CURRENT RESULTS
+
+On the latest run, the model's mean absolute error was 0.0221 and the
+baseline's was 0.0193. The model did not beat the naive baseline on this data.
+
+Possible reasons include slowly changing indicators, a near-constant outcome
+from year to year, mixed units in the outcome file, and very early years (from
+1751) that are sparse and noisy.
+
+
+8. NEXT STEPS
+
+  - Confirm the units and source of the outcome file.
+  - Restrict the analysis to recent years, for example from 1990 onward.
+  - Test whether adding more history (such as two lags, or last year's change)
+    helps the model.
+  - Describe the results honestly in the write-up and the video, including a
+    negative result if it persists.
+
+
+9. WHAT IS IN THE REPOSITORY
+
+  country_risk.py                 the forecasting script
+  country_risk_writeup.md         a written explanation of the script
+  four CSV files                  the data described in section 2
+  README.md                       the repository description
+
+
+10. A NOTE ON HONESTY
+
+The write-up, the video outline, and the first synthetic data were drafted with
+AI assistance. The script was run and debugged step by step with the terminal
+output, and the results reported here come from those runs. Any claims in the
+final video should be checked against the actual data and the outcome file's
+documentation.
